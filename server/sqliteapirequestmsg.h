@@ -49,7 +49,7 @@ private:
     QVariant mItemKey;
     ClientSocketState mState;
     
-#ifdef TEST_EUNIT
+#ifdef UNITTEST
     friend class UT_TinySqlApiRequestMsg;
     friend class UT_TinySqlApiServer;    
 #endif    

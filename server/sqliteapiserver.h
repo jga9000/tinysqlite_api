@@ -55,6 +55,8 @@ private slots:
     // Parses the response from storage handler
     void handleResponse(TinySqlApiResponseMsg *msg);
 
+    void abnormalServerExit();
+
 private:
 
     void addClientId(int id);
@@ -64,10 +66,12 @@ private:
     void convertToSupportedType(QDataStream &in, const QVariant &from) const;
     TinySqlApiServerError translateSqlError(const QString &from) const;
     void sendToClient(TinySqlApiResponseMsg &msg, ServerResponseType type, TinySqlApiServerError error);
+    void enqueueItems(TinySqlApiResponseMsg &msg, ServerResponseType type, TinySqlApiServerError error);
 
 private:
 
     QQueue<TinySqlApiRequestMsg *> mRequestQueue;
+
     TinySqlApiRequestHandler *mRequestHandler;
 
     // List of registered client ids (for async responses/notifications) and
@@ -77,7 +81,7 @@ private:
     // Server owns the instance of the storage
     TinySqlApiStorage *mStorageHandler;
 
-    #ifdef TEST_EUNIT
+    #ifdef UNITTEST
         friend class UT_TinySqlApiServer;
         friend class UT_TinySqlApiStorage;        
     #endif

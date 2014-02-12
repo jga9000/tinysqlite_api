@@ -20,7 +20,8 @@ public:
     virtual ~TinySqlApiResponseMsg();
 
 public:
-    inline int rows() const { return mSqlQuery.record().count(); }
+    inline int columns() const { return mSqlQuery.record().count(); }
+    inline int column() const { return mCol; }
     int startReading();
     bool getNextValue( int &value );
     bool getNextValue( QString &value );
@@ -30,11 +31,8 @@ public:
     inline QSqlError::ErrorType queryError() const { return mSqlError; }
     inline QString queryErrorStr() const { return mSqlQuery.lastError().text(); }
     inline void setError(QSqlError::ErrorType error)  { mSqlError = error; }
-
     // SQL primary key for the response item/row
     inline QVariant itemKey() const { return mItemKey; }
-
-private:
     bool nextCol();
 
 private:
@@ -46,7 +44,7 @@ private:
     QVariant mItemKey;
     QSqlError::ErrorType mSqlError;
 
-    #ifdef TEST_EUNIT
+    #ifdef UNITTEST
         friend class UT_TinySqlApiResponseMsg;
     #endif
 

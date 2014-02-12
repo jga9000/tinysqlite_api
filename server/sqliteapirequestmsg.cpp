@@ -1,6 +1,8 @@
 // Includes
 #include "sqliteapirequestmsg.h"
 #include "logging.h"
+#include <QDataStream>
+#include <QLocalSocket>
 
 TinySqlApiRequestMsg::TinySqlApiRequestMsg(QObject *parent, QLocalSocket *socket) :
     QObject(parent), mClientConnection(socket)

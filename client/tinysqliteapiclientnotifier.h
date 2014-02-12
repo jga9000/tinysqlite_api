@@ -3,8 +3,8 @@
 
 #include "QtNetwork/QLocalServer"
 //#include "mock_qlocalserver.h"
-#include <tinysqliteapiglobal.h>
-#include <tinysqliteapidefs.h>
+#include "tinysqliteapiglobal.h"
+#include "tinysqliteapidefs.h"
 
 class QLocalSocket;
 
@@ -16,48 +16,26 @@ class TinySqlApiClientNotifier : public QLocalServer
     Q_OBJECT
 
 public:
-   
-    /*!
-     * Construct new TinySqlApiClientNotifier
-     */
     explicit TinySqlApiClientNotifier(QObject *parent, int clientId);
-    
-    //! Destructor
     virtual ~TinySqlApiClientNotifier();
 
 public:
-    
-    /*! Starts listening notifications from the server.
-     *  \return true on success, false on failure.
-     */    
+      
     bool startListening();
-
-    /*! Has to be called after the last received data is processed.
-     *  Otherwise the next 'write' from server process would get missed.
-     *  Server queues the responses and sends again until this is called.
-     */
     void confirmReadyToReceiveNext();
 
 public:
     inline bool isConnected() { return (mSocketNotify ? true : false); }
     
 signals:
-    
-    /*! This signal is emitted when client receives any data
-     *  from the server. 
-     *  \param stream - Contains reference to the new stream that uses the socket
-     */    
     void newDataReceived(QDataStream &stream);
     
 private slots:
     
-    //! Slot for QLocalSocket::readyRead signal
     void handleServerResponse();
     
-    //! Slot for QLocalSocket::disconnected signal
     void handleDisconnect();
 
-    //! Slot for QLocalSocket::newConnection signal
     void handleNewConnection();  
 
 private:
@@ -66,7 +44,7 @@ private:
 
 private: // For testing
 
-#ifdef TEST_EUNIT
+#ifdef UNIT_TEST
     friend class UT_TinySqlApiClientNotifier;
 #endif
 

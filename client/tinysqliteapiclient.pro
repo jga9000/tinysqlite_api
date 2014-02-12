@@ -1,12 +1,9 @@
 TEMPLATE = lib
 
-# dll name is determined from filename
-TARGET = 
+TARGET = tinysqliteapiclient
 QT += network
-DEPENDPATH += src ../inc inc
-MOC_DIR = moc
 
-INCLUDEPATH += ../inc inc
+INCLUDEPATH += . ../inc
 
 # Sources
 SOURCES += sqliteapi.cpp \
@@ -19,12 +16,12 @@ DEFINES += BUILD_SQLITEAPI
 
 HEADERS += sqliteapiglobal.h \
     tinysqliteapidefs.h \
-    sqliteapiserverdefs.h \    
+    sqliteapiserverdefs.h \
     tinysqliteapiclient.h \
     tinysqliteapiclientnotifier.h \
     tinysqliteapi.h
 
 win32: {
 #for simulations
-    DESTDIR += $$(QTDIR)/bin
+#   DESTDIR += $$(QTDIR)/bin
 }

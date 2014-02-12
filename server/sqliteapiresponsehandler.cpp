@@ -19,7 +19,7 @@ TinySqlApiResponseHandler::~TinySqlApiResponseHandler()
 #ifdef QT_DEBUG
     if( mResponseQueue.count() > 0 ) {
         DPRINT << "SQLITEAPISRV:ERR, there was" << mResponseQueue.count() << "unsent response(s)!";
-#ifndef EUNIT_ENABLED
+#ifndef UNITTEST
         Q_ASSERT(false);
 #endif
     }
@@ -80,6 +80,12 @@ void TinySqlApiResponseHandler::sendData(const QByteArray &data)
     else{
         DPRINT << "SQLITEAPISRV:ERR, Responsehandler client socket is no more valid (disconnected?)";
     }    
+}
+
+void TinySqlApiResponseHandler::enqueueData(const QByteArray &data)
+{
+    DPRINT << "SQLITEAPISRV:enqueue, client:" << mClientId;
+    mResponseQueue.append(data);
 }
 
 bool TinySqlApiResponseHandler::isFreeToSend() const

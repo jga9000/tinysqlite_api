@@ -9,11 +9,7 @@ class TinySqlApiServer;
 /*
  * Sqlite API server launcher
  */
-#ifndef EUNIT_ENABLED
 class ServerLauncher : public QCoreApplication
-#else
-class ServerLauncher : public QObject
-#endif
 {
     Q_OBJECT
 
@@ -30,12 +26,6 @@ public:
 public slots:
     // Signaled from server.
     void handleExit();
-
-private: // For testing
-
-#ifdef TEST_EUNIT
-    friend class UT_ServerMain;
-#endif
 
 private:
     TinySqlApiServer *mServer;

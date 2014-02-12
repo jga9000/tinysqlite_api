@@ -20,7 +20,7 @@ public:
     //! Destructor    
     virtual ~TinySqlApiStorage();
 
-    bool initialize();
+    bool initialize(const QString& name = "tinysqlapidb.db");
     
 signals:
     void newResponse(TinySqlApiResponseMsg *msg);
@@ -30,7 +30,7 @@ private slots:
     void handleRequest();
 
 private: // For testing    
-    #ifdef TEST_EUNIT
+    #ifdef UNITTEST
         friend class UT_TinySqlApiStorage;
     #endif
 

@@ -21,12 +21,12 @@ public:
     virtual ~TinySqlApiSql();
 
 public:
-    bool initialize();
+    bool initialize(const QString& name);
     TinySqlApiResponseMsg *sqlExecute(TinySqlApiRequestMsg& msg);
 
 private: // For testing    
 
-    #ifdef TEST_EUNIT
+    #ifdef UNITTEST
         friend class UT_TinySqlApiSql;
     #endif
 

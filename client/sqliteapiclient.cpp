@@ -13,7 +13,47 @@
 
 //! Number of retries if connection fails
 const unsigned int TinySqlApiServerConnectRetries = 3;
-    
+
+/*! Constructs new request object
+ *
+ * \param request Request id
+ * \param msg Request message
+ * \param itemKey Request primary key
+ */
+TinySqlApiClient::TinySqlApiServerRequest::TinySqlApiServerRequest(
+    ServerRequestType request, 
+    const QString &msg, 
+    const QVariant &itemKey) :
+        mRequest(request),
+        mMsg(msg),
+        mItemKey(itemKey) {
+}
+
+/*! Getter for the request constant id
+ *
+ * \return Request Id
+ */
+ServerRequestType TinySqlApiClient::TinySqlApiServerRequest::request() const {
+    return mRequest;
+}
+
+/*! Getter for the request string
+ *
+ * \return String
+ */
+QString TinySqlApiClient::TinySqlApiServerRequest::msg() const {
+    return mMsg;
+}
+
+/*! Getter for the primary key
+ *
+ * \return Key
+ */
+QVariant TinySqlApiClient::TinySqlApiServerRequest::itemKey() const {
+    return mItemKey;
+}
+
+//! Destructor    
 TinySqlApiClient::~TinySqlApiClient()
 {
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "~TinySqlApiClient";
@@ -29,10 +69,15 @@ TinySqlApiClient::~TinySqlApiClient()
 #endif
     qDeleteAll(mRequestQueue.begin(), mRequestQueue.end());
     mRequestQueue.clear();
-    
+
+    sendRequest(UnregisterReq);
     disconnectFromServer();
 }
 
+/*!
+ * Construct new TinySqlApiClient
+ * Also starts the Sqlite API server process if not started yet.
+ */
 TinySqlApiClient::TinySqlApiClient(QObject *parent, int clientId) :
     QLocalSocket(parent), mClientId(clientId)
 {
@@ -40,6 +85,11 @@ TinySqlApiClient::TinySqlApiClient(QObject *parent, int clientId) :
     mRetries = 0;
 }
 
+
+/*! 
+ *  Connects the localsocket to the Server socket
+ *  Connects the signals to slot callbacks.
+ */
 void TinySqlApiClient::connectServer()
 {
     if( mWaitingServerResponse ) {
@@ -71,6 +121,13 @@ void TinySqlApiClient::connectServer()
     connectToServer(TinySqlApiServerDefs::TinySqlApiServerUniqueName);
 }
 
+/*! 
+ *  Connects the server and sends the request message
+ *  \param request The request code
+ *  \param msg The request message
+ *  \param itemKey Identifier for the item under change (primary key).
+ *                 The change notification is based on this key.
+ */
 void TinySqlApiClient::sendRequest(ServerRequestType request, const QString &msg, const QVariant &itemKey)
 {
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "enqueued new request:" << msg;
@@ -84,11 +141,18 @@ void TinySqlApiClient::sendRequest(ServerRequestType request, const QString &msg
     connectServer();
 }
 
+/*! 
+ *  Connects the server and sends the request message without any message
+ *  \param request The request code
+ */
 void TinySqlApiClient::sendRequest(ServerRequestType request)
 {
     sendRequest( request, "", "");
 }
 
+/*! 
+ *  Connects the server and sends the next request message from the queue
+ */    
 void TinySqlApiClient::sendNextRequest()
 {
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "dequeue & sending next request";
@@ -108,13 +172,14 @@ void TinySqlApiClient::sendNextRequest()
     out << request->itemKey();
     DPRINT << "SQLITEAPICLI:Item key:" << request->itemKey();
     out << request->msg();
-    DPRINT << "SQLITEAPICLI:Message:" << request->msg();
+    //DPRINT << "SQLITEAPICLI:Message:" << request->msg();
 
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "sending";
     write(block);
     delete request;
 }
 
+//! Slot for QLocalSocket::connected signal
 void TinySqlApiClient::handleConnected()
 {
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "handleConnected";
@@ -126,7 +191,7 @@ void TinySqlApiClient::handleConnected()
     }
     else{
         DPRINT << "SQLITEAPICLI:ERR, client id" << mClientId << "connected, but no request found!";
-#ifndef EUNIT_ENABLED        
+#ifndef UNITTEST        
         Q_ASSERT(false);
 #endif
         mWaitingServerResponse = false;
@@ -134,6 +199,7 @@ void TinySqlApiClient::handleConnected()
     }
 }
 
+//! Slot for QLocalSocket::disconnected signal  
 void TinySqlApiClient::handleDisconnected()
 {
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "handleDisconnected";
@@ -143,6 +209,9 @@ void TinySqlApiClient::handleDisconnected()
     }
 }
 
+/*!
+ *  Server sent response for the last request. Next request can be sent.
+ */
 void TinySqlApiClient::serverResponseReceived()
 {
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "serverResponseReceived";
@@ -170,12 +239,13 @@ void TinySqlApiClient::serverResponseReceived()
     }
 }
 
+//! Slot for QLocalSocket::bytesWritten signal
 void TinySqlApiClient::dataSent(qint64 bytes)
 {
     DPRINT << "SQLITEAPICLI:client:" << mClientId << "dataSent:" << bytes << "bytes";
 }
 
-
+//! Slot for QLocalSocket::readyRead signal    
 void TinySqlApiClient::handleReceiveConfirmation()
 {
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "ACK for request received";
@@ -190,6 +260,7 @@ void TinySqlApiClient::handleReceiveConfirmation()
     }    
 }
 
+//! Slot for QLocalSocket::error signal   
 void TinySqlApiClient::handleError(QLocalSocket::LocalSocketError socketError)
 {
     mWaitingServerResponse = false;
@@ -204,14 +275,14 @@ void TinySqlApiClient::handleError(QLocalSocket::LocalSocketError socketError)
         }
         else{
             DPRINT << "SQLITEAPICLI:ERR, Sqlite API connect retry failed" ;
-#ifndef EUNIT_ENABLED            
+#ifndef UNITTEST            
             Q_ASSERT(false);
 #endif
         }
         break;
     case QLocalSocket::ConnectionRefusedError:
         DPRINT << "SQLITEAPICLI:ERR, The connection was refused";
-#ifndef EUNIT_ENABLED        
+#ifndef UNITTEST        
         Q_ASSERT(false);
 #endif
         break;
@@ -220,7 +291,7 @@ void TinySqlApiClient::handleError(QLocalSocket::LocalSocketError socketError)
         break;
     default:
         DPRINT << "SQLITEAPICLI:ERR, error occurred:" << errorString();
-#ifndef EUNIT_ENABLED        
+#ifndef UNITTEST        
         Q_ASSERT(false);
 #endif
         break;

@@ -5,7 +5,7 @@
 
 namespace TinySqlApiServerDefs
 {
-    const QString TinySqlApiVersion = "v.1.1.2";
+    const QString TinySqlApiVersion = "v.1.1.3";
 
     const QString TinySqlApiServerExeName = "tinysqliteapiserver.exe";
     const QString TinySqlApiServerUniqueKey = "TinySqlApiServerKeyEA012FCB";

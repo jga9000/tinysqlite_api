@@ -1,7 +1,8 @@
 // System includes
 
-#include "Qlocalsocket.h"
-#include "Qlocalserver.h"
+#include <QLocalSocket>
+#include <QLocalServer>
+#include <QDataStream>
 
 // User includes
 #include "sqliteapiserverdefs.h"
@@ -10,7 +11,16 @@
 
 // ======== MEMBER FUNCTIONS ========
 
-//! Starts listening notifications from the server.
+/*!
+ * Construct new TinySqlApiClientNotifier
+ */
+TinySqlApiClientNotifier::TinySqlApiClientNotifier(QObject *parent, int clientId) :
+    QLocalServer(parent), mClientId(clientId)
+{
+    mSocketNotify =  NULL;
+}
+
+//! Destructor
 TinySqlApiClientNotifier::~TinySqlApiClientNotifier()
 {
     DPRINT << "SQLITEAPICLI:~TinySqlApiClientNotifier";
@@ -22,12 +32,9 @@ TinySqlApiClientNotifier::~TinySqlApiClientNotifier()
     mSocketNotify = NULL;
 }
 
-TinySqlApiClientNotifier::TinySqlApiClientNotifier(QObject *parent, int clientId) :
-    QLocalServer(parent), mClientId(clientId)
-{
-    mSocketNotify =  NULL;
-}
-
+/*! Starts listening notifications from the server.
+ *  \return true on success, false on failure.
+ */  
 bool TinySqlApiClientNotifier::startListening()
 {
     // Create unique client/server connection name
@@ -48,6 +55,7 @@ bool TinySqlApiClientNotifier::startListening()
     return true;
 }
 
+//! Slot for QLocalSocket::newConnection signal
 void TinySqlApiClientNotifier::handleNewConnection()
 {
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "Server just connected to client notifier";
@@ -61,19 +69,21 @@ void TinySqlApiClientNotifier::handleNewConnection()
     connect(mSocketNotify, SIGNAL(disconnected()), this, SLOT(handleDisconnect()));
 }
 
+//! Slot for QLocalSocket::readyRead signal
 void TinySqlApiClientNotifier::handleServerResponse()
 {
     DPRINT << "SQLITEAPICLI:client id" << mClientId << "handleServerResponse";
     if( !mSocketNotify ) {
         DPRINT << "SQLITEAPICLI:ERR, TinySqlApiServer::handleRequest, mSocketNotify is null";
-#ifndef EUNIT_ENABLED        
+#ifndef UNITTEST        
         Q_ASSERT(false);
 #endif
         return;
     }
     int bytesAvailable = mSocketNotify->bytesAvailable();
     if( bytesAvailable > 0 ) {
-        QDataStream stream(mSocketNotify);
+        QDataStream stream;
+        stream.setDevice( mSocketNotify );
         stream.setVersion(int(QDataStream::Qt_4_0));
         emit newDataReceived( stream );
     }
@@ -82,16 +92,21 @@ void TinySqlApiClientNotifier::handleServerResponse()
     }
 }
 
+//! Slot for QLocalSocket::disconnected signal
 void TinySqlApiClientNotifier::handleDisconnect()
 {
     DPRINT << "SQLITEAPICLI:ClientNotifier::handleDisconnect";
 }
 
+/*! Has to be called after the last received data is processed.
+ *  Otherwise the next 'write' from server process would get missed.
+ *  Server queues the responses and sends again until this is called.
+ */
 void TinySqlApiClientNotifier::confirmReadyToReceiveNext()
 {
     if( !mSocketNotify ) {
         DPRINT << "SQLITEAPICLI:ERR, client id" << mClientId << "TinySqlApiServer::handleRequest, mSocketNotify is null";
-#ifndef EUNIT_ENABLED        
+#ifndef UNITTEST        
         Q_ASSERT(false);
 #endif
         return;
@@ -99,3 +114,10 @@ void TinySqlApiClientNotifier::confirmReadyToReceiveNext()
 
     mSocketNotify->write("ready");  // Write anything
 }
+
+// Signals
+
+/*! This signal is emitted when client receives any data from the server. 
+ *  \param stream - Contains reference to the new stream that uses the socket
+ void newDataReceived(QDataStream &stream)
+ */    

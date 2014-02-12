@@ -21,20 +21,12 @@ TinySqlApiResponseMsg::~TinySqlApiResponseMsg()
 
 int TinySqlApiResponseMsg::startReading()
 {
-    int count = 0;
-    if (mSqlQuery.next()) {
-        int col = 0;
-        while (col<mSqlQuery.record().count()) {
-            DPRINT << "SQLITEAPISRV:SQL record:" << mSqlQuery.value(col).toString();
-            col++;
-            count++;
-        }
-    }
-    else{
+    if (!mSqlQuery.next()) {
         DPRINT << "SQLITEAPISRV:No data";
+        return 0;
     }
-    DPRINT << "SQLITEAPISRV:count:" << count;
-    return count;
+    DPRINT << "SQLITEAPISRV:records:" << mSqlQuery.record().count();
+    return mSqlQuery.record().count();
 }
 
 bool TinySqlApiResponseMsg::getNextValue( int &value )
@@ -44,7 +36,7 @@ bool TinySqlApiResponseMsg::getNextValue( int &value )
         return false;
     }
     DPRINT << "SQLITEAPISRV:Next value:" << mSqlQuery.value(mCol).toString();
-    DPRINT << "SQLITEAPISRV:Type:" << mSqlQuery.value(mCol).type();
+    //DPRINT << "SQLITEAPISRV:Type:" << mSqlQuery.value(mCol).type();
     value = mSqlQuery.value(mCol++).toInt();
     return true;
 }
@@ -56,7 +48,7 @@ bool TinySqlApiResponseMsg::getNextValue( QString &value )
         return false;
     }
     DPRINT << "SQLITEAPISRV:Next value:" << mSqlQuery.value(mCol).toString();
-    DPRINT << "SQLITEAPISRV:Type:" << mSqlQuery.value(mCol).type();
+    //DPRINT << "SQLITEAPISRV:Type:" << mSqlQuery.value(mCol).type();
     value = mSqlQuery.value(mCol++).toString();
     return true;
 }
@@ -68,7 +60,7 @@ bool TinySqlApiResponseMsg::getNextValue( QVariant &value )
         return false;
     }
     DPRINT << "SQLITEAPISRV:Next value:" << mSqlQuery.value(mCol).toString();
-    DPRINT << "SQLITEAPISRV:Type:" << mSqlQuery.value(mCol).type();
+    //DPRINT << "SQLITEAPISRV:Type:" << mSqlQuery.value(mCol).type();
 
     value = mSqlQuery.value(mCol++);
     return true;

@@ -7,6 +7,8 @@
 #include "sqliteapistorage.h"
 #include "logging.h"
 
+#include <QDataStream>
+
 TinySqlApiServer::~TinySqlApiServer()
 {
     DPRINT << "SQLITEAPISRV:~TinySqlApiServer";
@@ -41,6 +43,8 @@ TinySqlApiServer::TinySqlApiServer(QObject *parent) :
     
     connect(mRequestHandler, SIGNAL(newRequest(TinySqlApiRequestMsg *)), this, SLOT(handleRequest(TinySqlApiRequestMsg *)));    
     connect(mStorageHandler, SIGNAL(newResponse(TinySqlApiResponseMsg *)), this, SLOT(handleResponse(TinySqlApiResponseMsg *)));
+
+    connect(mRequestHandler, SIGNAL(abnormalDisconnection()), this, SLOT(abnormalServerExit()) );
 }
 
 bool TinySqlApiServer::start( int firstClientId )
@@ -61,7 +65,7 @@ bool TinySqlApiServer::start( int firstClientId )
     return true;
 }
 
-TinySqlApiRequestMsg* TinySqlApiServer::getNextRequest()
+TinySqlApiRequestMsg *TinySqlApiServer::getNextRequest()
 {
     DPRINT << "SQLITEAPISRV:getNextRequest(). Queue count:" << mRequestQueue.count();
     if( mRequestQueue.count() == 0 ) {
@@ -87,6 +91,14 @@ void TinySqlApiServer::addClientId(int id)
     mResponseHandlers[id] = responsehandler;    // Hash table, client id is the identifier
     DPRINT << "SQLITEAPISRV:Client" << id << "registered.";    
     DPRINT << "SQLITEAPISRV:Client count now:" << mResponseHandlers.count();    
+}
+
+void TinySqlApiServer::abnormalServerExit()
+{
+    if (mResponseHandlers.count() <= 1) {
+        DPRINT << "abnormalServerExit";
+        emit deleteServerSignal();
+    }
 }
 
 void TinySqlApiServer::removeClientId(int id)
@@ -161,6 +173,13 @@ void TinySqlApiServer::handleRequest(TinySqlApiRequestMsg* msg)
         delete msg;
         break;
 
+    case UnregisterReq:
+        DPRINT << "SQLITEAPISRV:UnregisterReq";
+        sendPlainResponse(*msg);
+        delete msg;
+        removeClientId(msg->id());
+        break;
+
     case SubscribeNotificationsReq:
         DPRINT << "SQLITEAPISRV:SubscribeNotificationsReq";
         changeSubscription(msg->id(), msg->itemKey(), true);
@@ -178,6 +197,22 @@ void TinySqlApiServer::handleRequest(TinySqlApiRequestMsg* msg)
     case CancelLastReq:
         DPRINT << "SQLITEAPISRV:CancelLastReq";
         removeLastRequest(msg->id());
+        sendPlainResponse(*msg);
+        delete msg;
+        break;
+
+    case ChangeDBReq:
+        DPRINT << "dbname:" << msg->itemKey().toString();
+        qDeleteAll(mRequestQueue.begin(), mRequestQueue.end());
+        mRequestQueue.clear();
+        delete mStorageHandler;
+        mStorageHandler = new TinySqlApiStorage( 0, *this );
+        Q_CHECK_PTR(mStorageHandler);
+        connect(mStorageHandler, SIGNAL(newResponse(TinySqlApiResponseMsg *)), this, SLOT(handleResponse(TinySqlApiResponseMsg *)));
+        if (!mStorageHandler->initialize(msg->itemKey().toString())) {
+            DPRINT << "SQLITEAPISRV:ERR, Storage re-initialize failed";
+            Q_ASSERT(false);
+        }
         sendPlainResponse(*msg);
         delete msg;
         break;
@@ -203,7 +238,7 @@ void TinySqlApiServer::handleRequest(TinySqlApiRequestMsg* msg)
         break;
     }
 
-    // Check and handle unsent responses for every client, just in case
+    // Check and handle unsent responses for every client
     foreach (TinySqlApiResponseHandler* handler, mResponseHandlers) {
         if( handler->unsentResponseCount()>0 ) {
             DPRINT << "SQLITEAPISRV:there are" << handler->unsentResponseCount() << "unsent responses for client" << handler->clientId();
@@ -221,6 +256,7 @@ void TinySqlApiServer::sendPlainResponse(const TinySqlApiRequestMsg& msg)
     if( responseHandler ) {
 
         QByteArray block;
+
         QDataStream out(&block, QIODevice::WriteOnly);
         out.setVersion(int(QDataStream::Qt_4_0));
 
@@ -249,7 +285,6 @@ void TinySqlApiServer::handleResponse(TinySqlApiResponseMsg *msg)
     switch(msg->request()) {
 
     case ReadGenItemReq:
-    case ReadAllGenItemsReq:
         responseType = ItemDataRes;
         break;
 
@@ -259,6 +294,14 @@ void TinySqlApiServer::handleResponse(TinySqlApiResponseMsg *msg)
 
     case CountReq:
         responseType = CountRes;
+        break;
+
+    case ReadTablesReq:
+        responseType = TablesRes;
+        break;
+
+    case ReadColumnsReq:
+        responseType = ColumnsRes;
         break;
 
     case CreateTableReq:
@@ -281,6 +324,18 @@ void TinySqlApiServer::handleResponse(TinySqlApiResponseMsg *msg)
         sendChangeNotification = true;
         notificationType = DeleteNotification;
         responseType = DeleteAllRes;
+        break;
+
+    // For ReadAllGenItemsReq Request
+    // 1. send message with first msg, put all the next items in the response queue
+    // 2. after readyRead signal, next response is sent from the queue
+    // 3. repeats 2 until queue is empty
+
+    case ReadAllGenItemsReq:
+        responseType = ItemDataRes;
+        if (queryError==QSqlError::NoError) {
+            enqueueItems(*msg, responseType, translatedErrorCode);
+        }
         break;
 
     // These are not handled here = no response
@@ -328,14 +383,14 @@ void TinySqlApiServer::convertToSupportedType(QDataStream &in, const QVariant &f
     case QVariant::ULongLong:
         // Conversion needed
         converted = from.toInt();
-        DPRINT << "SQLITEAPISRV:Converted to Int:" << converted;
+        //DPRINT << "SQLITEAPISRV:Converted to Int:" << converted;
         in << converted;
         break;
 
     default:
         // Not used yet, conversion needed, QString by default
         converted = from.toString();
-        DPRINT << "SQLITEAPISRV:Converted to Int:" << converted;
+        //DPRINT << "SQLITEAPISRV:Converted to Int:" << converted;
         in << converted;
         break;
     }
@@ -388,7 +443,7 @@ void TinySqlApiServer::sendToClient(TinySqlApiResponseMsg &msg, ServerResponseTy
         QVariant value;
 
         if(msg.startReading()>0){
-            DPRINT << "SQLITEAPISRV:row count:" << msg.rows();
+            DPRINT << "SQLITEAPISRV:row count:" << msg.columns();
             while(msg.getNextValue(value)) {
                 // convertToSupportedType writes variant into the stream
                 DPRINT << "SQLITEAPISRV:Writing value:" << value.toString();
@@ -408,5 +463,56 @@ void TinySqlApiServer::sendToClient(TinySqlApiResponseMsg &msg, ServerResponseTy
             // Client may be removed before the request was received
             DPRINT << "SQLITEAPISRV:ERR, Responsehandler not found for id:" << msg.id();
         }
+    }
+}
+
+void TinySqlApiServer::enqueueItems(TinySqlApiResponseMsg &msg, ServerResponseType type, TinySqlApiServerError error)
+{
+    if (msg.startReading()>0){
+        DPRINT << "SQLITEAPISRV:column count:" << msg.columns();
+
+        TinySqlApiResponseHandler *responseHandler = handler(msg.id());
+        if (responseHandler){
+
+            bool bytesAvailable(true); // true until !getNextValue
+
+            while(bytesAvailable) {
+
+                QByteArray block;
+                QDataStream out(&block, QIODevice::WriteOnly);
+                out.setVersion(int(QDataStream::Qt_4_0));
+
+                out << int(type);
+                out << error;
+
+                // Read whole row
+                while (bytesAvailable) {
+                    QVariant value;
+                    bytesAvailable = msg.getNextValue(value);
+
+                    if (bytesAvailable) {
+                        // convertToSupportedType writes variant into the stream
+                        DPRINT << "SQLITEAPISRV:Writing value:" << value.toString();
+                        convertToSupportedType(out, value );
+                        // Check if column was last
+                        if (msg.column()>=msg.columns()) {
+                            DPRINT << "SQLITEAPISRV:last item in the row";
+                            break;
+                        }
+                    }
+                    else{
+                        DPRINT << "SQLITEAPISRV:last value";
+                    }
+                }
+                responseHandler->enqueueData(block);
+            }
+        }
+        else{
+            // Client may be removed before the request was received
+            DPRINT << "SQLITEAPISRV:ERR, Responsehandler not found for id:" << msg.id();
+        }
+    }
+    else{
+        DPRINT << "SQLITEAPISRV:No SQL values found";
     }
 }

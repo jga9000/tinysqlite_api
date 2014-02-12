@@ -28,12 +28,13 @@ private slots:
    
 signals:
     void newRequest(TinySqlApiRequestMsg *msg);
+    void abnormalDisconnection();
 
 private:
 
     QList<TinySqlApiRequestMsg*> mMsgs;
     
-    #ifdef TEST_EUNIT
+    #ifdef UNITTEST
         friend class UT_TinySqlApiRequestHandler;
         friend class UT_TinySqlApiServer;
     #endif

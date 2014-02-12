@@ -17,15 +17,10 @@ ServerLauncher::~ServerLauncher()
     DPRINT << "SQLITEAPISRV:server deleted";
 }
 
-#ifndef EUNIT_ENABLED
 ServerLauncher::ServerLauncher(int &argc, char *argv[])
  : QCoreApplication(argc, argv), mServer(NULL)
-#else
-ServerLauncher::ServerLauncher(int &argc, char *argv[])
- : mServer(NULL)
-#endif
 {
-    mClientId = -1;
+    mClientId = 1234;
 
     if( argc>0 ) {
         QStringList arguments = QCoreApplication::arguments();
@@ -36,12 +31,10 @@ ServerLauncher::ServerLauncher(int &argc, char *argv[])
             mClientId = arguments.at(1).toInt();
         }
     }
-    else{
+    /*else{
         DPRINT << "SQLITEAPISRV:ERR, no arguments found!";
-#ifndef EUNIT_ENABLED
         Q_ASSERT(false);
-#endif
-    }
+    }*/
     
     DPRINT << "SQLITEAPISRV:TinySqlApiServer" << TinySqlApiServerDefs::TinySqlApiVersion;
 }
@@ -49,9 +42,7 @@ ServerLauncher::ServerLauncher(int &argc, char *argv[])
 void ServerLauncher::handleExit()
 {
     DPRINT << "SQLITEAPISRV:ServerLauncher::handleExit";
-#ifndef EUNIT_ENABLED
     quit();
-#endif
 }
 
 static bool isStarted()
@@ -92,13 +83,11 @@ void ServerLauncher::start(QMutex& mutex)
         DPRINT << "SQLITEAPISRV:Server running OK";
         DPRINT << "SQLITEAPISRV:unlocking mutex..";
         mutex.unlock();
-        DPRINT << "SQLITEAPISRV:Mutex unlocked";        
-#ifndef EUNIT_ENABLED        
+        DPRINT << "SQLITEAPISRV:Mutex unlocked";
         exec();
-#endif
     }
 }
-#ifndef EUNIT_ENABLED
+
 int main(int argc, char *argv[])
 {
     // Server singleton launch using SharedMemory must be done in server EXE side,
@@ -152,4 +141,3 @@ int main(int argc, char *argv[])
     qDebug() << "SQLITEAPISRV:Server process exit";
     return 0;
 }
-#endif

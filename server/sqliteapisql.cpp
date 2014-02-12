@@ -14,14 +14,14 @@ TinySqlApiSql::TinySqlApiSql(QObject *parent) :
 {
 }
 
-bool TinySqlApiSql::initialize()
+bool TinySqlApiSql::initialize(const QString &name)
 {
     mDb = QSqlDatabase::addDatabase( "QSQLITE");
     if(!mDb.isValid()){
         DPRINT << "SQLITEAPISRV:ERR, QSqlDatabase is not valid, error:" << mDb.lastError().text();
         return false;
     }
-    mDb.setDatabaseName("sqliteapidb.db");
+    mDb.setDatabaseName(name);
 
     if(!mDb.open()){
         DPRINT << "SQLITEAPISRV:ERR, Unable to connect to DB, error:" << mDb.lastError().text();

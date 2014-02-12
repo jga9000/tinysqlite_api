@@ -7,16 +7,20 @@
 enum ServerRequestType
 {
     RegisterReq=1,
+    UnregisterReq,
     CreateTableReq,
     ReadGenItemReq,
     CountReq,
+    ReadTablesReq,
+    ReadColumnsReq,
     ReadAllGenItemsReq,
     SubscribeNotificationsReq,
     UnsubscribeNotificationsReq,
     WriteGenItemReq,
     CancelLastReq,
     DeleteReq,
-    DeleteAllReq
+    DeleteAllReq,
+    ChangeDBReq
 };
 
 //! Server response codes, used in localsocket communication
@@ -25,10 +29,13 @@ enum ServerResponseType
     UndefinedRes,
     InitializedRes,
     ItemDataRes,
+    TablesRes,
+    ColumnsRes,
     CountRes,
     WriteGenItemRes,
     DeleteRes,
     DeleteAllRes,
+    //ChangeDBRes,
     UpdateNotification,
     DeleteNotification,
     ConfirmationRes

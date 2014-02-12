@@ -17,6 +17,7 @@ public:
 
 public:
     void sendData(const QByteArray &data);
+    void enqueueData(const QByteArray &data);
     inline int lastError() const { return mError; }
     inline int clientId() const { return mClientId; }
     inline int unsentResponseCount() const { return mResponseQueue.count(); }
@@ -48,7 +49,7 @@ private:
     bool mSending;
     int mError;
 
-    #ifdef TEST_EUNIT
+    #ifdef UNITTEST
         friend class UT_TinySqlApiResponseHandler;
         friend class UT_TinySqlApiServer;        
     #endif

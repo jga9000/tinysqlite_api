@@ -83,7 +83,12 @@ void TinySqlApiRequestHandler::handleDisconnect(TinySqlApiRequestMsg *msg)
     }
     else{
         DPRINT << "SQLITEAPISRV:ERR, RequestHandler: not valid request, client socket state:" << msg->state();
-        if(index != -1){
+        if(index == -1 || msg->id() == -1){
+            // TBD: this is only for one-client-server apps:
+            // No clients exists anymore, close server
+            emit abnormalDisconnection();
+        }
+        else{
             delete mMsgs.takeAt(index);
         }
     }

@@ -22,9 +22,10 @@ TinySqlApiStorage::TinySqlApiStorage(QObject *parent, TinySqlApiServer &server)
     connect(&mServer, SIGNAL(newRequest()), this, SLOT(handleRequest()));
 }
 
-bool TinySqlApiStorage::initialize()
+bool TinySqlApiStorage::initialize(const QString& name)
 {
-    return mSqlHandler->initialize();
+    DPRINT << "SQLITEAPISRV:TinySqlApiStorage, initializing DB:" << name;
+    return mSqlHandler->initialize(name);
 }
 
 // 
